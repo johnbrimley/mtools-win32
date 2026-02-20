@@ -32,7 +32,7 @@ jobs:
         run: |
           # Create a fake langinfo.h so charsetConv.c doesn't crash
           mkdir -p include
-          cat <<EOF > include/langinfo.h
+          cat <<EOF > langinfo.h
           #ifndef LANGINFO_H
           #define LANGINFO_H
           #define CODESET 0
