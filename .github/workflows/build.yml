@@ -1,5 +1,11 @@
 name: Build mtools for Windows
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - 'release/**'
+      - 'master'
+      - 'main'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,11 +15,11 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: UCRT64 # Modern Windows C Runtime
+          msystem: UCRT64
           update: true
           install: >-
             base-devel
@@ -21,16 +27,61 @@ jobs:
             make
             autoconf
             automake
+            sed
+            awk
+
+      - name: Extract Version and Create Resource
+        run: |
+          # 1. Extract version from version.texi
+          RAW_VER=$(grep "@set VERSION" version.texi | awk '{print $3}')
+          echo "Building version: $RAW_VER"
+          
+          # 2. Convert to comma-separated for Windows (e.g., 4,0,44,0)
+          COMMA_VER=$(echo $RAW_VER | sed 's/\./,/g'),0
+          
+          # 3. Save for GitHub Artifact naming
+          echo "MTOOLS_VER=$RAW_VER" >> $GITHUB_ENV
+
+          # 4. Create the Windows Resource Script on the fly
+          cat <<EOF > version.rc
+          1 VERSIONINFO
+          FILEVERSION $COMMA_VER
+          PRODUCTVERSION $COMMA_VER
+          BEGIN
+              BLOCK "StringFileInfo"
+              BEGIN
+                  BLOCK "040904E4"
+                  BEGIN
+                      VALUE "CompanyName", "GNU"
+                      VALUE "FileDescription", "mtools for Windows (FAT16/32 Tools)"
+                      VALUE "FileVersion", "$RAW_VER"
+                      VALUE "InternalName", "mtools"
+                      VALUE "OriginalFilename", "mtools.exe"
+                      VALUE "ProductName", "mtools"
+                      VALUE "ProductVersion", "$RAW_VER"
+                  END
+              END
+              BLOCK "VarFileInfo"
+              BEGIN
+                  VALUE "Translation", 0x409, 1252
+              END
+          END
+          EOF
+          
+          # 5. Compile the resource
+          windres version.rc -o version.o
 
       - name: Build mtools
         run: |
-          ./autogen.sh || true # Generate configure if not present
+          ./autogen.sh || true
           ./configure --prefix=/usr
-          make
-          # This will create mtools.exe, mdir.exe, etc.
-          
+          # Link the version resource into every executable generated
+          make LDFLAGS="-Wl,version.o"
+          # Strip debug symbols to keep file size small
+          strip *.exe
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mtools-windows
+          name: mtools-${{ env.MTOOLS_VER }}-windows-x64
           path: "*.exe"
