@@ -87,7 +87,7 @@ jobs:
           ./autogen.sh || true
           ./configure --prefix=/usr
           # Link the version resource into every executable generated
-          make LDFLAGS="-Wl,version.o" LIBS="-liconv"
+          make LDFLAGS="-static -Wl,version.o" LIBS="-liconv -lcharset"
           # Strip debug symbols to keep file size small
           strip *.exe
 
