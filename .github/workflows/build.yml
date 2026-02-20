@@ -1,0 +1,36 @@
+name: Build mtools for Windows
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64 # Modern Windows C Runtime
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-ucrt-x86_64-gcc
+            make
+            autoconf
+            automake
+
+      - name: Build mtools
+        run: |
+          ./autogen.sh || true # Generate configure if not present
+          ./configure --prefix=/usr
+          make
+          # This will create mtools.exe, mdir.exe, etc.
+          
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtools-windows
+          path: "*.exe"
