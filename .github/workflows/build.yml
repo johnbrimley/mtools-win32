@@ -28,6 +28,18 @@ jobs:
             sed
             awk
 
+      - name: Fix POSIX headers for Windows
+              run: |
+                # Create a fake langinfo.h so charsetConv.c doesn't crash
+                mkdir -p include
+                cat <<EOF > include/langinfo.h
+                #ifndef LANGINFO_H
+                #define LANGINFO_H
+                #define CODESET 0
+                static inline char *nl_langinfo(int item) { return "UTF-8"; }
+                #endif
+                EOF
+                
       - name: Extract Version and Create Resource
         run: |
           # 1. Extract version from version.texi
