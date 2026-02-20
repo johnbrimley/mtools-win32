@@ -22,6 +22,7 @@ jobs:
           install: >-
             base-devel
             mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-libiconv
             make
             autoconf
             automake
@@ -86,7 +87,7 @@ jobs:
           ./autogen.sh || true
           ./configure --prefix=/usr
           # Link the version resource into every executable generated
-          make LDFLAGS="-Wl,version.o"
+          make LDFLAGS="-Wl,version.o" LIBS="-liconv"
           # Strip debug symbols to keep file size small
           strip *.exe
 
